@@ -31,7 +31,7 @@ except NameError:
     import prepare
 
 
-# ライブラリの特定が必要ならばTrue
+# True if Library Identification is Necessary
 if pyelftools:
     def is_strip(file):
         ret = False
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     basename = os.path.basename(root)
     if idapro:
         libname = ('_libc_', '_libgcc_')
-        # シグネチャ
+        # Signature
         name = get_inf_attr(INF_PROCNAME)
         if name.lower().startswith('arm'):
             cpu = 'arm'
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         dir = os.path.dirname(os.path.abspath(sys.executable))
         for p in glob.glob(os.path.join(dir, 'sig', cpu, '_*_*.sig')):
             signame.add(os.path.basename(p))
-        # JSON読み込み
+        # Read JSON
         root, _ = os.path.splitext(os.path.abspath(get_idb_path()))
         file = root + '_' + basename + '.json'
         if os.path.exists(file):
@@ -110,10 +110,10 @@ if __name__ == '__main__':
                             libname):
             del libjson['result']
             edit = True
-        # シグネチャ適用
+        # Apply Signature
         diff = signame - frozenset(libjson['estimate'])
         if diff:
-            # 概算
+            # Estimation
             for name in sorted(diff):
                 for ea in Functions():
                     flags = get_func_flags(ea)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
                 libjson['estimate'][name] = count
             edit = True
         elif 'result' not in libjson:
-            # 決定
+            # Determination
             signame = sorted(signame)
             for ln in libname:
                 name = None
@@ -156,7 +156,7 @@ if __name__ == '__main__':
                     libjson['determine'][name] = count
                     edit = True
                     break
-            # 終了判定
+            # End Decision
             result = {}
             for ln in libname:
                 name = None
@@ -175,11 +175,11 @@ if __name__ == '__main__':
             if frozenset(result) == frozenset(libname):
                 libjson['result'] = result
                 edit = True
-        # JSON更新
+        # Update JSON
         if edit:
             with open(file, 'w', newline='\n') as f:
                 json.dump(libjson, f, indent=2, sort_keys=True)
-        # 終了
+        # Exit
         if idc.ARGV:
             qexit(0)
     else:
@@ -201,7 +201,7 @@ if __name__ == '__main__':
                          'ignore_machine': True,
                          'ignore_strip':   True})
 
-        # ファイル・フォルダ
+        # File/Folder
         idapro32, idapro64 = prepare.get_idapro_path()
         for arg in args['path']:
             for path in glob.glob(arg):

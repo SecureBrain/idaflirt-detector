@@ -1,95 +1,138 @@
 # idaflirt-detector
 idaflirt-detector is Python scripts and IDA FLIRT signatures to detect statically linked libraries from stripped ELF file.
-## スクリプト
-スクリプトはscriptフォルダ以下にある。
+## Script
+There are scripts in "script" directory.
 ### pkg2sig.py
 - OS  
-UNIX系OS
-- 環境  
+UNIX-like OS
+- ENvironment  
 Python 3
-- 子プロセス  
+- Child Process  
 wget、tar  
-スクリプトと同じディレクトリ：flair??\bin\linux\pelf、flair??\bin\linux\sigmake
-- 出力  
-スクリプトと同じディレクトリ：pkg、lib、pat、sig、name_alternate.csv、name_ignore.txt
+Same directory as the script : flair??\bin\linux\pelf, flair??\bin\linux\sigmake
+- Output  
+Same directory as the script : pkg, lib, pat, sig, name_alternate.csv, name_ignore.txt
 
-実行するとスクリプトがあるディレクトリにpkg、lib、pat、sigという名前でディレクトリを作成する。また作業用にtmpという名前のディレクトリを作成するが、終了時に削除する。(既にtmpがあるときには、既存のtmpも削除される。) また、スクリプトがあるフォルダにflair??\bin\linux\pelf、flair??\bin\linux\sigmakeが存在することを前提とする。
+When "pkg2sig.py" is executed, it creates directories named "pkg", "lib", "pat" and "sig" in the same directory as the script.
+It also creates a working directory named "tmp", which it deletes on exit.
+It will also create a working directory named tmp, which will be deleted on exit.
+(If there is already "tmp", the existing "tmp" is also deleted.)
+And it is assumed that "flair??\bin\linux\pelf" and "flair??\bin\linux\sigmake" are existing in the same directory as the script.
 
-スクリプトはwgetを呼び出してpkgにディストリビューションのパッケージをダウンロードする。ダウンロードするパッケージのサブディレクトリとURLはスクリプトにハードコードされている。サブディレクトはディストリビューションの名前とバージョン番号である。保存されるファイル名はURLによって決まる。
+It calls "wget" to download the distribution's packages into "pkg" directory.
+The subdirectory and url of the package to download are hard-coded into the script.
+The subdirectory is the name and version number of the distribution.
+The saved file name is determined by the url.
 
-スクリプトはダウンロードしたパッケージをtmpに展開し、libc.aとlibgcc.aをlibに名前を変えて保存する。保存される名前には先頭に「_libc_」または「_libgcc_」が付き、ディストリビューションの名前とバージョン番号に基づくスクリプトにハードコードされた名前になる。サブディレクトはIDA Proのアーキテクチャに対応する。パッケージに複数のlibc.aまたはlibgcc.aが含まれているときには、名前にパッケージを展開したときのlibc.aまたはlibgcc.aのディレクトリ名を付加する。
+It extracts the downloaded package to "tmp" directory and saves "libc.a" and "libgcc.a" renamed to "lib" directory.
+The names are hard-coded into the script based on the name and version number of the distribution and prepends "_libc_" or "_libgcc_".
+The subdirectories correspond to the architecture name of IDA Pro.
+If a package contains more than one libc.a or libgcc.a, the name is appended with the directory name which is contained in the package.
 
-スクリプトはpelfを呼び出してlibにある拡張子が.aのファイルをパターンファイルに変換する。パターンファイルはライブラリと同名の拡張子が.patでpatに保存される。サブディレクトは上記のlibと同様である。同じパターンファイルが作成されたときには、最初のパターンファイルを除いて、その内容は最初のパターンファイルの名前になり、以降の処理の対象としない。
+It calls "pelf" to convert the files in "lib" with the extension ".a" into pattern files.
+The pattern files are stored in "pat", which has the same base name as the library and with ".pat" extension.
+The subdirectories are the same as in "lib" above.
+If the same pattern file is created, it is ignored and its contents is the first pattern file name.
 
-スクリプトはsigmakeを呼び出してパターンファイルをシグネチャに変換する。シグネチャはパターンファイルと同名で名前の拡張子が.sigでsigに保存される。サブディレクトは上記のpkgやlibと同様である。このファイルをIDA Proのsigフォルダ(通常は「%ProgramFiles%\IDA Pro ?.?\sig」)にコピーすることでIDA Proのシグネチャとして利用できる。
+It calls "sigmake" to convert pattern files into signature files.
+The signature files are stored in "sig", which has the same base name as the library and with ".sig" extension.
+The subdirectories are the same as in "pkg" or "lib" above.
+If they are copied to the IDA Pro sig folder (usually "%ProgramFiles%\IDA Pro ?.?\sig"), they are used as a signature on IDA Pro.
 
-スクリプトはスクリプトがあるディレクトリに「name_alternate.csv」が存在しなければ作成する。スクリプトはスクリプトがあるディレクトリに「name_ignore.txt」が存在しなければ作成する。
+It creats "name_alternate.csv" if it does not exist in the directory in the same directory as the script.
+It creats "name_ignore.txt" if it does not exist in the directory in the same directory as the script.
 ### chksig.py
 - OS  
 Windows
-- 環境  
+- Environment  
 Python 3(IDA Python)
-- 入力  
-検体と同じパス：*_chksig.json  
+- Input  
+Same path as the sample : *_chksig.json  
 IDA Pro：*.sig
-- 出力  
-検体と同じパス：*_chksig.json
+- Output  
+Same path as the sample : *_chksig.json
 
-スクリプトはコマンドラインまたはIDA Pythonとして実行可能である。
-#### コマンドライン
-コマンドラインから引数としてELFファイルを指定する。スクリプトはIDA Proを起動し、本スクリプトをIDA Pythonとして実行する。スクリプトは静的にリンクされたライブラリが見つかるか、静的にリンクされたライブラリがないと確定するまで、IDA Pythonの実行を繰り返す。IDA Proは「%ProgramFiles%\IDA Pro*」にインストールされていることを前提とする。
-##### オプション
+The script is executable on command line and IDA Python.
+#### Command Line
+The ELF file is specified as an argument on the command line.
+The script executes IDA Pro and itself as IDA Python.
+It will repeat executing IDA Python until it either detects statically linked library or determines that there is no statically linked library.
+It is assumed that IDA Pro is installed in "%ProgramFiles%\IDA Pro*".
+##### Option
 - -f、--force  
-既存のJSONがあるならば削除する。
+Delete JSON if it is existing.
 - -i、--ignore  
---ignore-entropyと--ignore-machine、--ignore-stripが有効になる。
+--ignore-entropy, --ignore-machine and --ignore-strip is enabled.
 - --ignore-entropy  
-このオプションがないときにはファイル全体のエントロピーが7.2未満のファイルを対象とする。このオプションを付けるとエントロピーに関係なくすべてのファイルが対象となる。
+Without this option, files with an overall entropy of less than 7.2 are targeted.
+With this option, all files are targeted, regardless of their entropy.
 - --ignore-machine  
-このオプションがないときにはCPUがARM、MIPS、Renesas SH、PowerPC or cisco 4500、x86-64、Intel 80386の検体だけでライブラリを特定する。このオプションを付けるとすべてのCPUが対象となる。
-- --ignore-strip  
-このオプションがないときには動的にライブラリをリンクしないstripされた検体だけでライブラリを特定する。このオプションを付けると動的リンクやstripに関係なく対象となる。
-#### IDA Python
-スクリプトはIDBファイルと同じ名前でファイル名の末尾および拡張子が「_chksig.json」のJSONファイルがないときには、すべてのシグネチャを順番に適用し、各シグネチャで検出した関数の数をJSONファイルに書き込む。スクリプトはJSONファイルが存在するときには読み込む。スクリプトはJSONのdetermineの値がなくestimateの値が最も大きいシグネチャを適用し、シグネチャで検出した関数の数をdetermineに書き込む。
+Without this option, files with CPU of ARM, MIPS, Renesas SH, PowerPC or cisco 4500, x86-64 or Intel 80386 are targeted.
+With this option, all files are targeted.
 
-determineの値が他のestimateおよびdetermineの値よりも大きいならば、そのライブラリが静的にリンクされているとみなす。
+- --ignore-strip  
+Without this option, files with statically linked and stripped are targeted.
+With this option, all files are targeted, regardless of linked or stripped.
+#### IDA Python
+If JSON file with the same base name and the name ending in "_chksig.json" is not existing, "chksig.py" applies all the signatures and writes the number of detected functions in each signature to the JSON file.
+It reads the JSON file if it exists.
+It applies the signature the greatest estimate value and no determine value in JSON, and writes the number of detected functions in the signature to the JSON file as the determine value.
+
+If the determine value is greater than the other values of estimate and determine, then its library is considered to be statically linked.
 ### prepare.py
 - OS  
 Windows
-- 環境  
+- Environment  
 Python 3(IDA Python)
-- 入力  
-IDBと同じパス：*_chksig.json  
+- Input  
+Same path as the IDB : *_chksig.json  
 IDA Pro：*.sig  
-スクリプトと同じフォルダ：prepare.txt、name_alternate.csv
+Same path as the script : prepare.txt, name_alternate.csv
 
-スクリプトをIDA Pythonとして実行すると、下記の関数を実行する。またコマンドラインから実行すると引数でしていたprepare.txtを解析してソートした結果を出力する。
+"prepare.py" calls the following functions.
+It parse the "prepare.txt" which is specified as an argument on the command line and output the sorted results.
 #### functionalize_single_instruction()
-スクリプトはすべてのアドレスを走査し、関数に属していないコード領域があるときには、その領域を1つの関数にする。
+The function scans all the addresses, and if there is an area of code which does not belong to a function, it makes that area into a single function.
 #### apply_signature()
-スクリプトはIDBファイルと同じ名前でファイル名の末尾および拡張子が「_chksig.json」のJSONファイルを読み込む。このJSONは辞書であり鍵resultの値の辞書の値で示されるシグネチャを適用する。
+The function reads the file with the same base name the IDB and the name ending in "_chksig.json".
+This JSON is a dictionary and it applies the signature indicated by the key "result" value.
 #### true_up_function_name()
-スクリプトはスクリプトと同じフォルダで名前が「name_alternate.csv」のファイルを読み込む。このファイルに基づき、関数の名前を標準化する。また関数のライブラリのフラグを有効にする。
+The function reads "name_alternate.csv" in the same directory as the script.
+Based on this file, the names of the functions are normalized. It also sets the flags of the library function.
 #### get_c_main()
-スクリプトは名前が「main」、または名前が「main_<16進数アドレス>」の関数があるならば、そのアドレスを返す。該当する関数がないときにはBADADDRを返す。該当する関数が複数あるときの動作は不定である。
+The function returns the address of the function whose name is "main" or "main_<hexadecimal address>", if it is found.
+If there is no such function, it returns BADADDR.
+If there are more than one function, the behaviour is undefined.
 #### register_c_main()
-スクリプトはget_c_mainがBADADDRを返すときには、C言語のmain関数を推定し、その関数を定義する。エントリーポイントからデータとして参照される名前がない関数が1つしかないときには、その関数をmainとみなす。該当する関数がないときまたは複数あるときにはmainの検出は失敗する。スクリプトは検出した関数の名前を「main_<16進数アドレス>」に変更する。
+If get_c_main returns BADADDR, the function estimates the C main function and defines that function.
+If there is only one function which is no name and refered as data from the entry point, the function is estimated to be main.
+The detection of main fails if there is no corresponding function or if there are multiple functions.
+The function changes the name of the detected function to "main_<hexadecimal address>".
 #### load_type_library()
-スクリプトは64ビットのときにはタイプライブラリの「gnuunx64」、それ以外では「gnuunx」をロードする。
+The function loads the type library "gnuunx64" if 64-bit, and "gnuunx" otherwise.
 #### apply_function_type()
-スクリプトはスクリプトと同じフォルダで名前が「prepare.txt」のファイルを読み込む。スクリプトはこのファイルに基づき、関数や変数の名前が一致するときには型を設定する。スクリプトはスクリプトと同じフォルダで名前が「name_alternate.csv」のファイルを読み込むことができるならば、このファイルに基づいて標準化されていない名前にも対応する。
-## ファイル形式
+The function reads "prepare.txt" in the same directory as the script.
+Based on this file, the function applies the function declaration if the names are matched.
+If the function can read "name_alternate.csv" in the same directory as the script, non-normalized names are supported based on the file.
+## File Format
 ### *_chksig.json
-ファイルはJSONであり、その内容は辞書である。辞書の鍵はestimate、determine、resultである。estimateとdetermineは辞書であり、鍵はライブラリの名前、値は検出した関数の数である。estimateは1回のスクリプトの実行でライブラリを順番に適用したときに検出した関数の数であり、determineは初めてライブラリを適用したときに検出した関数の数である。resultは辞書であり、鍵はライブラリの接頭辞、値は適用すべきライブラリの名前である。resultがあるならば、ライブラリを特定する処理は終了している。
-## 成果物
-成果物はスクリプトを実行した結果、生成されたファイルでありdeliverableフォルダ以下にある。
+The file is JSON and the content is dictironay.
+The keys are "estimate", "determine" and "result".
+"estimate" and "determine" are dictionary, the key is the signature name, the value is the number of detected functions.
+"estimate" is the number when all the signatures are applied at the first time, and "determine" is the number when the signature is applied independently.
+"result" is dictionary, the key is the prefix of the signature name, the value is the signature name.
+If "result" is existing, the identification has been completed.
+## Deliverable
+The deliverables are the files generated as a result of executing the script and they are in "deliverable" folder.
 ### name_alternate.csv
-同じ関数に複数の名前がある場合、その関数の名前を「,」で区切って1行に出力する。各行は名前が短い順、辞書順にソートされる。本研究では最初の名前を関数の標準の名前とみなす。
+If the same function has more than one name, the names of the functions are output on a single line, separated by a ",".
+Each line is sorted in order of shortest name and lexical order.
+In this study, the first name is regarded as the normalized name of the function.
 ### name_ignore.txt
-各行はlibgcc.aにある関数の名前である。
+Each line is the function names in "libgcc.a".
 ### sig/{arm,mc68k,mips,pc,ppc,sh3}
-IDA Proのsigフォルダ(通常は「%ProgramFiles%\IDA Pro ?.?\sig」)にコピーすることでIDA Proのシグネチャとして利用できる。
+If they are copied to the IDA Pro sig folder (usually "%ProgramFiles%\IDA Pro ?.?\sig"), they are used as a signature on IDA Pro.
 ## Copyright
 Copyright (c) 2022 SecureBrain.
-## 謝辞
-本研究は総務省の「電波資源拡大のための研究開発(JPJ000254)」における委託研究「電波の有効利用のためのIoTマルウェア無害化／無機能化技術等に関する研究開発」によって実施した成果を含みます。
+## Acknowledgment
+This research was conducted under a contract of "MITIGATE" among "Research and Development for Expansion of Radio Wave Resources(JPJ000254)", which was supported by the Ministry of Internal Affairs and Communications, Japan.

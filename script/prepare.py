@@ -27,7 +27,7 @@ else:
 ENTROPY_THRESHOLD = 7.2
 
 
-# エントロピー
+# Entropy
 def entropy(file):
     size = os.path.getsize(file)
     with open(file, 'rb') as f:
@@ -37,7 +37,7 @@ def entropy(file):
     return ent
 
 
-# ELFの属性取得
+# Get ELF Attributes
 # 3:pc, 4:mc68k, 8:mips, 20:ppc, 40:arm, 42:sh3, 62:pc
 def get_elf_attr(file):
     bits = machine = None
@@ -51,12 +51,12 @@ def get_elf_attr(file):
     return bits, machine
 
 
-# パック判定
+# Is Packed
 def is_packed(file):
     return entropy(file) >= ENTROPY_THRESHOLD
 
 
-# IDA Proのパス取得
+# Get IDA Pro Path
 def get_idapro_path():
     idapro = glob.glob(os.path.join(os.environ['ProgramFiles'], 'IDA Pro*'))
     if len(idapro) != 1:
@@ -77,7 +77,7 @@ def exec_ida(idapro, script, file):
             os.remove(f)
 
 
-# 関数化
+# Make functions from independent codes
 def functionalize_single_instruction():
     seg = idc.get_first_seg()
     while seg != idc.BADADDR:
@@ -101,9 +101,9 @@ def functionalize_single_instruction():
         seg = idc.get_next_seg(seg)
 
 
-# シグネチャ適用
+# Apply Signature
 def apply_signature():
-    # JSON読み込み
+    # Read JSON
     root, _ = os.path.splitext(os.path.abspath(idc.get_idb_path()))
     file = root + '_chksig.json'
     if os.path.exists(file):
@@ -119,9 +119,9 @@ def apply_signature():
                 idc.auto_wait()
 
 
-# 関数名正規化
+# Normalize Function Name
 def true_up_function_name():
-    # ライブラリ関数名
+    # Library Function Name
     file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         'name_alternate.csv')
     libfunc = {}
@@ -130,7 +130,7 @@ def true_up_function_name():
             for s in f:
                 e = s.strip().split(',')
                 libfunc.update({k: e[0] for k in e})
-    # ライブラリフラグ
+    # Library Flag
     for ea in idautils.Functions():
         name = idc.get_name(ea)
         if name in libfunc:
@@ -143,7 +143,7 @@ def true_up_function_name():
                 idc.set_func_flags(ea, flags | idc.FUNC_LIB)
 
 
-# main取得
+# Get C main
 def get_c_main():
     addr = idc.get_name_ea_simple('main')
     r = re.compile(r'main_([0-9A-Fa-f]+)')
@@ -162,7 +162,7 @@ def get_c_main():
     return addr
 
 
-# main検出と作成
+# Detect and create main
 def register_c_main():
     if get_c_main() == idc.BADADDR:
         addr = set()
@@ -180,14 +180,14 @@ def register_c_main():
             idc.set_name(addr, 'main_{:X}'.format(addr))
 
 
-# タイプライブラリをロードする
+# Load Type Library
 def load_type_library():
     return idc.add_default_til('gnuunx64'
                                if idaapi.get_inf_structure().is_64bit()
                                else 'gnuunx')
 
 
-# 型設定
+# Set Type
 def set_type(ea, newtype):
     ret = True
     if newtype:
@@ -199,9 +199,9 @@ def set_type(ea, newtype):
     return ret and idc.apply_type(ea, pt)
 
 
-# 関数の型を適用する
+# Apply Function Type
 def apply_function_type():
-    # 読み込み
+    # Read
     root, _ = os.path.splitext(os.path.abspath(__file__))
     file = root + '.txt'
     decl = {}
@@ -211,7 +211,7 @@ def apply_function_type():
             m = r.fullmatch(s)
             if m:
                 decl[m.group(1)] = s
-    # ライブラリ関数名
+    # Library Function Name
     file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         'name_alternate.csv')
     if os.path.exists(file):
@@ -224,7 +224,7 @@ def apply_function_type():
                             if n2 in decl:
                                 decl[n1] = decl[n2]
                                 break
-    # 一致する名前を探して型設定
+    # Search Matched Name and Apply the Function Declaration
     r = re.compile(r'(\w+?)(_[0-9a-fA-F]+)')
     seg = idc.get_first_seg()
     while seg != idc.BADADDR:
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     if idapro:
         init_idb()
     else:
-        # 読み込み
+        # Read
         argc = len(sys.argv)
         if argc >= 2:
             with open(sys.argv[1]) as f:
@@ -280,7 +280,7 @@ if __name__ == '__main__':
         else:
             sys.exit('usage: ' + __file__ + ' infile outfile')
         indata = indata.splitlines()
-        # 関数名正規化
+        # Normalize Function Name
         alternate = set()
         file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             'name_alternate.csv')
@@ -289,11 +289,11 @@ if __name__ == '__main__':
                 for s in f:
                     e = s.strip().split(',')
                     alternate.update(e[1:])
-        # 正規表現
+        # Regular Expression
         r_decl = re.compile(r'.*?(\w+)\s*\(.*')
         r_sort = re.compile(r'[^\da-zA-Z]')
         r_space = re.compile(r'\s*(\W)\s*')
-        # 加工
+        # Process
         outdate = []
         for i, s in enumerate(indata):
             if s:
@@ -308,7 +308,7 @@ if __name__ == '__main__':
                 else:
                     sys.exit('Syntax: ' + str(i) + ' ' + s)
         outdate = '\n'.join(map(lambda t: t[2], sorted(outdate)))
-        # 書き込み
+        # Write
         if argc >= 2:
             with open(sys.argv[min(argc, 3) - 1], 'w', newline='\n') as f:
                 f.write(outdate + '\n')

@@ -18,7 +18,7 @@ import urllib.parse
 
 
 if __name__ == '__main__':
-    # パッケージ定義
+    # Package Definition
     architecture = [('arm',   'armv4l'),
                     ('arm',   'armv5l'),
                     ('mc68k', 'm68k'),
@@ -80,7 +80,7 @@ if __name__ == '__main__':
                ('pc',    ()),
                ('ppc',   ('-r67:0:0', '-r87:0:0')),
                ('sh3',   ('-r2:0:0',  '-r147:0:0')))
-    # 実行環境
+    # Execution Environmant
     cur_dir = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 \
         else os.path.dirname(os.path.abspath(__file__))
     pf = platform.system()
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         pelf = 'pelf' + ext
         sigmake = 'sigmake' + ext
 
-    # ディレクトリ作成
+    # Create Directory
     pkg_dir = os.path.join(cur_dir, 'pkg')
     lib_dir = os.path.join(cur_dir, 'lib')
     pat_dir = os.path.join(cur_dir, 'pat')
@@ -122,12 +122,12 @@ if __name__ == '__main__':
     for dir in sub_dir:
         os.makedirs(dir, exist_ok=True)
 
-    # パッケージ
+    # Package
     table = str.maketrans({c: '-' for c in '!\"#$&\'()*+;<>?[\\]^`{|}~'})
     libname = ('libc', 'libgcc')
     libfile = {ln + '.a': ln for ln in libname}
     for name in sorted(archive):
-        # ダウンロード
+        # Download
         cpu = archive[name]['cpu']
         url = archive[name]['url']
         file = os.path.join(pkg_dir, archive[name]['pkg'],
@@ -135,13 +135,13 @@ if __name__ == '__main__':
         if not os.path.exists(file):
             subprocess.run(('wget', '-O', file, url))
 
-        # ライブラリ収集
+        # Collect Library
         if not any(map(lambda f: glob.glob(f),
                        (os.path.join(lib_dir,
                                      cpu,
                                      '_' + ln + '_' + name + '*')
                         for ln in libname))):
-            # 展開
+            # Expand
             os.makedirs(tmp_dir, exist_ok=True)
             _, ext = os.path.splitext(file)
             c = {'.gz': 'z', '.bz2': 'j', '.xz': 'J'}[ext]
@@ -155,7 +155,7 @@ if __name__ == '__main__':
             if path:
                 subprocess.run(['tar', '--warning=no-unknown-keyword',
                                 '-' + c + 'xf', file, '-C', tmp_dir] + path)
-            # 移動
+            # Move
             path = {lf: set() for lf in libfile}
             for dirpath, _, filename in os.walk(tmp_dir):
                 for file in filename:
@@ -184,7 +184,7 @@ if __name__ == '__main__':
             shutil.rmtree(tmp_dir)
 
     for cpu, opt in cpu_opt:
-        # パターン作成
+        # Create Pattern
         pattern = []
         libpath = glob.glob(os.path.join(lib_dir, cpu, '*.a'))
         libpath.sort()
@@ -199,7 +199,7 @@ if __name__ == '__main__':
                     s = tuple(f)
                     if len(s) > 0 and s[-1].strip() == '---':
                         pattern.append(pat)
-        # 重複パターンを削除
+        # Remove Duplicate Patterns
         pattern.sort()
         pat_path = pattern.copy()
         pat_size = {p: os.path.getsize(p) for p in pattern}
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                             f.write(os.path.basename(root) + '\n')
                         pattern.remove(p)
                         pat_path.remove(p)
-        # シグネチャ作成
+        # Create SIgnature
         for pat in pattern:
             root, _ = os.path.splitext(pat)
             name = os.path.basename(root)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
             if not os.path.exists(sig):
                 subprocess.run((sigmake, '-r', '-n' + name, pat, sig))
 
-    # 名前ファイル作成
+    # Generate Name File
     re_hex = re.compile(r'-?[\da-fA-F]+')
     pattern = []
     for cpu, _ in cpu_opt:
