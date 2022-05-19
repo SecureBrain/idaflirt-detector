@@ -83,10 +83,10 @@ if __name__ == '__main__':
             cpu = 'mc68k'
         else:
             cpu = 'pc'
-        signame = set()
         dir = os.path.dirname(os.path.abspath(sys.executable))
-        for p in glob.glob(os.path.join(dir, 'sig', cpu, '_*_*.sig')):
-            signame.add(os.path.basename(p))
+        signame = set(os.path.basename(p)
+                      for p in glob.glob(os.path.join(dir,
+                                                      'sig', cpu, '_*_*.sig')))
         # Read JSON
         root, _ = os.path.splitext(os.path.abspath(get_idb_path()))
         file = root + '_' + basename + '.json'
@@ -95,21 +95,16 @@ if __name__ == '__main__':
                 libjson = json.load(f)
         else:
             libjson = {}
-        edit = False
-        for k in ('estimate', 'determine'):
-            if k in libjson:
-                diff = frozenset(libjson[k]) - signame
-                if diff:
-                    for n in diff:
-                        del libjson[k][n]
-                    edit = True
-            else:
-                libjson[k] = {}
-        if 'result' in libjson \
-                and not all(lambda n: libjson['result'][n] in signame,
-                            libname):
-            del libjson['result']
-            edit = True
+        edit = True
+        if 'estimate' in libjson:
+            diff = frozenset(libjson['estimate']) - signame
+            if diff:
+                for n in diff:
+                    del libjson['estimate'][n]
+            elif 'result' in libjson:
+                edit = False
+        else:
+            libjson['estimate'] = {}
         # Apply Signature
         diff = signame - frozenset(libjson['estimate'])
         if diff:
@@ -129,54 +124,19 @@ if __name__ == '__main__':
                         count += 1
                 libjson['estimate'][name] = count
             edit = True
-        elif 'result' not in libjson:
-            # Determination
+        # Result
+        if edit:
+            libjson['result'] = {}
             signame = sorted(signame)
             for ln in libname:
                 name = None
-                estimate = 0
-                determine = 1
+                estimate = 1
                 for n in signame:
-                    if n.startswith(ln):
-                        if n in libjson['determine']:
-                            if determine < libjson['determine'][n]:
-                                determine = libjson['determine'][n]
-                        else:
-                            if estimate < libjson['estimate'][n]:
-                                name = n
-                                estimate = libjson['estimate'][n]
-                if estimate >= determine:
-                    plan_to_apply_idasgn(name)
-                    auto_wait()
-                    count = 0
-                    for ea in Functions():
-                        flags = get_func_flags(ea)
-                        if flags != -1 and flags & FUNC_LIB:
-                            count += 1
-                    libjson['determine'][name] = count
-                    edit = True
-                    break
-            # End Decision
-            result = {}
-            for ln in libname:
-                name = None
-                estimate = determine = 0
-                for n in signame:
-                    if n.startswith(ln):
-                        if n in libjson['determine']:
-                            if determine < libjson['determine'][n]:
-                                name = n
-                                determine = libjson['determine'][n]
-                        else:
-                            if estimate < libjson['estimate'][n]:
-                                estimate = libjson['estimate'][n]
-                if estimate < max(determine, 1):
-                    result[ln] = name
-            if frozenset(result) == frozenset(libname):
-                libjson['result'] = result
-                edit = True
-        # Update JSON
-        if edit:
+                    if n.startswith(ln) and estimate < libjson['estimate'][n]:
+                        name = n
+                        estimate = libjson['estimate'][n]
+                libjson['result'][ln] = name
+            # Update JSON
             with open(file, 'w', newline='\n') as f:
                 json.dump(libjson, f, indent=2, sort_keys=True)
         # Exit
@@ -217,13 +177,7 @@ if __name__ == '__main__':
                         and (args['ignore_entropy']
                              or not prepare.is_packed(path)):
                         idapro = {32: idapro32, 64: idapro64}[bits]
-                        while not is_result(file):
-                            epoch = os.path.getmtime(file) \
-                                                if os.path.exists(file) else -1
-                            prepare.exec_ida(idapro, script, path)
-                            if not os.path.exists(file) \
-                                    or epoch == os.path.getmtime(file):
-                                break
+                        prepare.exec_ida(idapro, script, path)
                     else:
                         with open(file, 'w', newline='\n') as f:
                             json.dump({'result': {}},
